@@ -207,9 +207,9 @@ plt.show()
 # The farmer is risk adverse and always plan for the WCS
 # Class "Veggie" stores the Veggies attributes and production data 
 # Class "S3" is the digital twin of the real environment and the continuous growth process and stochastic set of activity is tracked in 4 discrete states
-# alternating a time window of activity were workers are required and a time window of queue were no work is needed on the plant and workers are free.
-# Workers are the resources, divided in two pools and dedicated. 
-# S3 explores alterantive scenarios to optimize human resources usage during the productions.
+# alternating a time window of activity where workers are required and a time window of queue where no work is needed on the plant and workers are free.
+# Workers are the resources, divided in two pools and are dedicated. 
+# S3 explores alterantive scenarios to optimize human resources usage during the productions and eventually making them floating.
 # Real_loss_rate is a variable in the S3 method "Farming" that simulate the real world stochasticity
                              ----------------------------------------------------------------------------
 class veggie():
