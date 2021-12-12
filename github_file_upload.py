@@ -5,23 +5,11 @@ import matplotlib.pyplot as plt
 from gurobipy import *
 import math
 
-#------to fix or add-----:
+ #------to add-----:
 
-# Problems now : The workers that went to help need to come back once the queue has been solved.
-# Is the current alternative scenario reasonable?
-
-# Make a function to proportionally split the total available workers between the two veggies in accordance with the Optimization results
-
-# Make the function that calculates optimal input by reading the demand (to fbe fixed)
-    
-# Make a function for Stages_Interval (queues) and farming_time (activity) ...to make proportions and fix
-
-# Enter mother nature in every state ( in terms of oscilation between lower and upper bound in terms of workers availability)
-
-# Enter the alternative scenario for loss rate and demand if in state 1... (shall I redo the optimization for a ned demand? Shall I consider now also the land and workers constraints?)
-
-# Make the alternative scenario with New Loss Rate
-
+# Make the alternative scenario with New Loss Rate and eventual change in Demand. 
+# I assume that after the optimization and so the optimal crop mix, the producer rents the land and hires workers
+# so only for subsequent optimization calls there will be the land and workers as new constraints (to accept new demand if in stage_1 == seeding)
 
  # -----------------------------------------------------------------------------------------------------------------------------------------#
 
@@ -39,11 +27,15 @@ edss_cauliflower = { 'upper_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_loss_rate' :
 'max_attainable_per_hectar': 1500, 'demand': np.random.randint(8000, 12000),"activity_step":1000,"Yield/10k_hectars": 3000,"Time_per_lc_stage":[6480,15120,21600,43200], 
 'stages_interval':[60,100,70,50],'farming_time':[3,1,1.5,18]}
 
-#Variables
+# Variables
 activity_time = 0.25
 queue_time = 1 - activity_time
 total_workers_available = 10
 total_demand = np.random.randint(edss_lettuce['demand'] + edss_cauliflower['demand'], 30000)
+
+# Weights in crop mix and scheduling decision making
+min_visible_waste_weight = 0.7
+min_total_input_weight = 0.3
 
 # Lower bound mean
 lettuce_mean_loss_rate_lower_bound = np.mean(edss_lettuce ['lower_loss_rate']).mean()
@@ -58,7 +50,7 @@ lettuce_variability = lettuce_mean_loss_rate_upper_bound - lettuce_mean_loss_rat
 cauliflower_variability = cauliflower_mean_loss_rate_upper_bound - cauliflower_mean_loss_rate_lower_bound
 
 
-# ---- CROP MIX AND SCHEDULING OPTIMIZATION -----
+    # ---- CROP MIX AND SCHEDULING OPTIMIZATION -----
 
 #Target 1
 # MINIMIZE TOTAL WASTE (IMPACT PER INPUT BY MINMIZING PRODUCTION OF GOODS WITH A WIDER LOSS RATE RANGE (VARIABILITY))
@@ -129,32 +121,21 @@ for e in model_2.getVars () :
 
 # --------------------------------------------------------- #
 
-goal_programming_model = Model(name = "Goal Programming - Minimize overachievement")  # MINIMIZE TOTAL WASTE (IMPACT PER INPUT)
+goal_programming_model = Model(name = "Goal Programming - Minimize sum of max percentage deviation ") 
 
 lettuce = goal_programming_model.addVar ( name = "lettuce", vtype = GRB.CONTINUOUS, lb = 0)
 cauliflower = goal_programming_model.addVar ( name = "cauliflower", vtype = GRB.CONTINUOUS, lb = 0)
-
-d_1_pos = goal_programming_model.addVar ( name = "d1+", vtype = GRB.CONTINUOUS, lb = 0)
-d_1_neg = goal_programming_model.addVar ( name = "d1-", vtype = GRB.CONTINUOUS, lb = 0)
-
-d_2_pos = goal_programming_model.addVar ( name = "d2+", vtype = GRB.CONTINUOUS, lb = 0)
-d_2_neg = goal_programming_model.addVar ( name = "d2-", vtype = GRB.CONTINUOUS, lb = 0)
-
-# Weight_1 = 5   # this weights setting produces one corner point solution
-# Weight_2 = 1
-
-Weight_1 = 1  # this weights setting produces the other corner point solution
-Weight_2 = 7
+Q = goal_programming_model.addVar ( name = " Q", vtype = GRB.CONTINUOUS, lb = 0)
 
 
-multi_obj_deviations = Weight_1 * d_1_pos + Weight_2 * d_2_pos 
+multi_obj_deviations = Q #minMax variable  ( minimize sum of max percentage deviation )
 goal_programming_model.setObjective ( multi_obj_deviations, GRB.MINIMIZE)  #define obj function and "the sense"
 
 #Subject to:
 
-#Previous targets:
-c4 = goal_programming_model.addConstr (lettuce_variability*lettuce + cauliflower_variability*cauliflower + d_1_neg - d_1_pos  <= model_1.objVal, name = "obj_1")
-c5 = goal_programming_model.addConstr( lettuce_mean_loss_rate_upper_bound *lettuce + cauliflower_mean_loss_rate_upper_bound *cauliflower + d_2_neg - d_2_pos <= model_2.objVal, name = "obj_2" )
+#Previous targets now constraints:
+c4 = goal_programming_model.addConstr (min_visible_waste_weight *((lettuce_variability* lettuce + cauliflower_variability*cauliflower)-model_1.objVal)/model_1.objVal  <= Q , name = "obj_1")
+c5 = goal_programming_model.addConstr( min_total_input_weight *(( (lettuce_mean_loss_rate_upper_bound* lettuce) + (cauliflower_mean_loss_rate_upper_bound* cauliflower))-model_2.objVal)/model_2.objVal <= Q, name = "obj_2" )
 
 #Previous constraints:    
 
@@ -166,31 +147,22 @@ c3 = goal_programming_model.addConstr (cauliflower >= edss_cauliflower['demand']
 goal_programming_model.optimize()
 # model_1.write (filename)  write model to a file
 
-
-
 lettuce_results.append(goal_programming_model.X[0])
 cauliflower_results.append(goal_programming_model.X[1])
 objs.append(goal_programming_model.objVal)
-deviations=[]
 
 
 # for e in goal_programming_model.getVars () :
 #     print ( "%s: %g" % ( e.varName, e.x))
-
-for e in range (len(lettuce_results[:-1])*len(lettuce_results[:-1])):
-    deviations.append (goal_programming_model.X[e +len(lettuce_results[:-1])])
-# if deviations[0]-deviations[1] != 0: 
-#     print ( "Target 1 deviation is of plus:",( deviations[0]-deviations[1])/model_1.objVal*100, "% in comparison to the optimum LP result")
-    
-# elif deviations[2]-deviations[3] != 0:
-#     print ( "Target 2 deviation is of plus:",   (deviations[2]-deviations[3])/model_2.objVal*100, "% in comparison to the optimum LP result")
-    
-# print ("Lettuce vector", lettuce_results)   
-# print ("Cauliflower vector", cauliflower_results) 
-# print ("Obj vector",objs)
-# print (deviations) 
+   
+print ("Lettuce vector", lettuce_results)   
+print ("Cauliflower vector", cauliflower_results) 
+print ("Obj vector",objs)
 
 #------------------------------ PLOT ---------------------------#
+
+minMax_result_target_1 = lettuce_variability*lettuce_results [2] + cauliflower_variability*cauliflower_results [2]
+minMax_result_target_2 = lettuce_mean_loss_rate_upper_bound*lettuce_results [2] + cauliflower_mean_loss_rate_upper_bound*cauliflower_results [2]
 
 plt.figure(figsize=(10,8))
 
@@ -209,8 +181,16 @@ plt.ylim(5000,total_demand)
 plt.hlines(edss_cauliflower['demand'], 0,total_demand, linestyles='--', alpha=0.6)
 plt.vlines(edss_lettuce['demand'], 0,total_demand, linestyles='--', alpha=0.6)
 plt.plot([0,total_demand],[total_demand,0], linestyle='--', label='constraints', alpha=0.6)
-plt.plot([model_1.objVal/lettuce_variability,0],[0,model_1.objVal/cauliflower_variability], 'brown', label='model 1 result', linewidth=3) #Solution of model 1
-plt.plot([model_2.objVal/lettuce_mean_loss_rate_upper_bound,0], [0,model_2.objVal/cauliflower_mean_loss_rate_upper_bound], 'hotpink', label='model 2 result', lw=3)  #Solution of model 2
+
+# Corner solutions plot
+# plt.plot([model_1.objVal/lettuce_variability,0],[0,model_1.objVal/cauliflower_variability], 'brown', label='model_1 (min exp waste', linewidth=3) #Solution of model 1
+# plt.plot([model_2.objVal/lettuce_mean_loss_rate_upper_bound,0], [0,model_2.objVal/cauliflower_mean_loss_rate_upper_bound], 'hotpink', label='model_2 min tot input', lw=3)  #Solution of model 2
+
+# minMax plot
+plt.plot([minMax_result_target_1/lettuce_variability,0],[0,minMax_result_target_1/cauliflower_variability], "blue", label='model 1 minMax result', linewidth=3) #Solution of model 1
+plt.plot([minMax_result_target_2/lettuce_mean_loss_rate_upper_bound,0], [0,minMax_result_target_2/cauliflower_mean_loss_rate_upper_bound], 'red', label='model 2 minMax result', lw=3)  #Solution of model 2
+
+
 plt.annotate('Feasable area', xy=(10000,10000))
 plt.legend()
 plt.xlabel('lettuce',size = 10)
@@ -221,10 +201,17 @@ optimization_results = {'lettuce_crop_optimal':math.ceil(lettuce_results [2]), '
 optimization_results['lettuce_workers'] = round(optimization_results['lettuce_crop_optimal']*total_workers_available/total_demand)
 optimization_results['cauliflower_workers'] = total_workers_available - optimization_results['lettuce_workers']
 print('OPTIMIZATION RESULT \n', optimization_results)
-plt.show()                                                                                    
-# CALCUALTE OPTIMAL INPUT GIVEN THE ABOVE CROP MIX DECISION AND THE UPPER BOUND OF THE PRODUCTION YIELD LOSS RATE CALLED WORST CASE SCENARIO (WCs)
-# The farmer is risk adverse and always plan for the WCS
+plt.show()     
 
+# CALCULATE OPTIMAL INPUT GIVEN THE ABOVE CROP MIX DECISION AND THE UPPER BOUND OF THE PRODUCTION YIELD LOSS RATE CALLED WORST CASE SCENARIO (WCs)
+# The farmer is risk adverse and always plan for the WCS
+# Class "Veggie" stores the Veggies attributes and production data 
+# Class "S3" is the digital twin of the real environment and the continuous growth process and stochastic set of activity is tracked in 4 discrete states
+# alternating a time window of activity were workers are required and a time window of queue were no work is needed on the plant and workers are free.
+# Workers are the resources, divided in two pools and dedicated. 
+# S3 explores alterantive scenarios to optimize human resources usage during the productions.
+# Real_loss_rate is a variable in the S3 method "Farming" that simulate the real world stochasticity
+                             ----------------------------------------------------------------------------
 class veggie():
 
     def __init__(self, est_yield, stages_interval, farming_time, name, actvivity_step, edss):
@@ -272,8 +259,7 @@ class veggie():
 
 
 class s3():
-
-  
+    
     def __init__(self):
 
         self.optimal_input_lettuce = self.calc_optimal_input(optimization_results['lettuce_crop_optimal'],edss_lettuce["upper_loss_rate"])
