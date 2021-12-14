@@ -211,7 +211,7 @@ plt.show()
 # Workers are the resources, divided in two pools and are dedicated. 
 # S3 explores alterantive scenarios to optimize human resources usage during the productions and eventually making them floating.
 # Real_loss_rate is a variable in the S3 method "Farming" that simulate the real world stochasticity
-                             ----------------------------------------------------------------------------
+   # ------------------------------------------------------------------------------------------------------------------- #                   
 class veggie():
 
     def __init__(self, est_yield, stages_interval, farming_time, name, actvivity_step, edss):
@@ -221,9 +221,9 @@ class veggie():
         self.farming_time = farming_time
         self.activity_step = actvivity_step
         self.edss = edss
-        self.stages_dic = {"farmed":0, "fertilized" :0, 'blossomed':0, 'harvested':0}
-        self.plot_dic = {"farmed": {'time':[], 'quantity':[]}, 'fertilized': {'time':[], 'quantity':[]},
-        'blossomed': {'time':[], 'quantity':[]}, 'harvested': {'time':[], 'quantity':[]}}
+        self.stages_dic = {"greenhouse_activity":0, "transplanting activity" :0, 'fertilizing_activity':0, 'harvested':0}
+        self.plot_dic = {"greenhouse_activity": {'time':[], 'quantity':[]}, 'transplanting activity': {'time':[], 'quantity':[]},
+        'fertilizing_activity': {'time':[], 'quantity':[]}, 'harvested': {'time':[], 'quantity':[]}}
 
     # def loss_rate(self, veg, path=r'C:\Users\Jacop\Downloads\excel.xls'):
     #     original_loss_rate = pd.read_excel(path, sheet_name=f'{veg}_1',usecols=['Up'], squeeze=True)[:4]
@@ -238,7 +238,7 @@ class veggie():
     #         #     optimal_input = calc_optimal_input (lettuce_crop_optimal,edss_lettuce['demand'])
     #             # recalculate what should be the input now
     #             # make the difference on what should be planted now, run optimization for new optimal crop mix and proceed
-    #             # recalcola optimal_input/est_yield -> new_opt_input - self.stages_dic['farmed']
+    #             # recalcola optimal_input/est_yield -> new_opt_input - self.stages_dic['greenhouse_activity']
     #        # if veg == "cauliflower"
     #          # do the same
             # return [new_loss_rate, 1]
@@ -285,7 +285,7 @@ class s3():
     def farming(self, env, veg, farmer, farmtime, stage):
         # # STAGE 0
         # stage = -1
-        stages = ['farmed', 'fertilized','blossomed','harvested']
+        stages = ['greenhouse_activity', 'transplanting activity','fertilizing_activity','harvested']
 
         waste_per_stage = {k:0 for k in stages}
 
@@ -360,7 +360,6 @@ class s3():
             # # QUEUE - difference between the queue estimated(scheduled time) and the time that has already elapsed while the pool of a veggie was sent to helo the other veggie production
             yield env.timeout(veg.stages_interval[stage] - (env.now - time_after_activity))
             print(f'Queue done! {veg.name, env.now} stage {stage} completed')
-            print ("  ")
             real_loss_rate = np.random.uniform(veg.edss['lower_loss_rate'][stage], veg.edss['upper_loss_rate'][stage])
             waste_per_stage[stages[stage]] = abs((veg.est_yield * (1-veg.edss['upper_loss_rate'][stage])) - veg.est_yield * (1- real_loss_rate))
 
@@ -372,14 +371,13 @@ class s3():
                 print(f'\n EST YIELD in stage {stage, veg.name} {veg.est_yield} \n')
                 print(veg.name, ':' ,veg.stages_dic, sep=' ')
             
-            elif stage == 3:
+            elif stage == 3 and env != self.env_fast:
 
                 veg.stages_dic["estimated_harvested_product"] = veg.est_yield*((1-veg.edss['upper_loss_rate'][stage]))
                 veg.stages_dic["actual_harvested_product"] = veg.est_yield - (veg.est_yield * real_loss_rate)
-                veg.stages_dic["VISIBILE_OVERPRODUCTION (WASTE) "] = abs((veg.est_yield*((1-veg.edss['upper_loss_rate'][stage]))) - (veg.est_yield - (veg.est_yield * real_loss_rate)))
+                veg.stages_dic[f"VISIBILE_OVERPRODUCTION (WASTE) for {veg.name} : "] = abs((veg.est_yield*((1-veg.edss['upper_loss_rate'][stage]))) - (veg.est_yield - (veg.est_yield * real_loss_rate)))
                 print (veg.stages_dic)
-                print ("----------------")
-                print('EXCESS IN INITIAL INPUT (SEEDS)', abs(waste_per_stage ["farmed"]))
+                print(f'EXCESS IN INITIAL INPUT (SEEDS) for {veg.name} :', abs(waste_per_stage ["greenhouse_activity"]))
                 print ("----------------")
                 print ("----------------")
            
