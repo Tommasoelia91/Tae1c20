@@ -4,10 +4,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from gurobipy import *
 import math
-
 np.random.seed(42)
 
- #------to add-----:
+
 
 # Make the alternative scenario with New Loss Rate and eventual change in Demand. 
 # I assume that after the optimization and so the optimal crop mix, the producer rents the land and hires workers
@@ -22,7 +21,7 @@ np.random.seed(42)
 # Both veggies LC stages are divided in activity and queue, respectively the activity time is always 25% of total time except for last stage
 
 
-
+print('\n\n')
 
 n_plot = 1
 def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, land_veg_1 = None, land_veg_2=None, sowed=None, original_1=0, original_2=0, too_much=False):
@@ -47,6 +46,7 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
 
         # ---- CROP MIX AND SCHEDULING OPTIMIZATION -----
 
+    print('tot demand', total_demand)
     #Target 1
     # MINIMIZE TOTAL WASTE (IMPACT PER INPUT BY MINMIZING PRODUCTION OF GOODS WITH A WIDER LOSS RATE RANGE (VARIABILITY))
     model_1 = Model(name = "lp_Expected_Waste_Target")  
@@ -71,24 +71,24 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
         # This constraint is dynamic - the sum of the optimal inputs (of seeds) for the crop mix found needs to require less land than the land available 
         #  because land is function of seeds - func(seeds) = land
 
-        c6 = model_1.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        <= (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))), name='c6')
+        c6 = model_1.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact']) 
+        <= ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])), name='c6')
         c1 = model_1.addConstr ( veg_1 + veg_2 >= total_demand, name = "c1" )
-        c2 = model_1.addConstr ( veg_1  >= max(veg_1_edss['demand'], original_1),  name = "c2" )    
-        c3 = model_1.addConstr (veg_2 >= max(veg_2_edss['demand'], original_2), name = "c3" )
-        c4 = model_1.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
+        c2 = model_1.addConstr ( veg_1  >= veg_1_edss['demand'],  name = "c2" )    
+        c3 = model_1.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
+        # c4 = model_1.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
 
         #Non negativity constraint is embed in the lower-bound when the variable has been defined above
 
     # set of constrains for when demand is too big to be satisfied and all land gets used and squeezed - too_much==True - and so it it maximised automatically
     elif too_much==True:
-        c1 = model_1.addConstr ( veg_1  >= original_1,  name = "c1" )    
-        c2 = model_1.addConstr (veg_2 >= original_2, name = "c2" )
-        c4 = model_1.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
-        c3 = model_1.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        == (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))), name='c4')
+        c1 = model_1.addConstr ( veg_1  >=  veg_1_edss['demand'],  name = "c1" )    
+        c2 = model_1.addConstr (veg_2 >= veg_2_edss['demand'], name = "c2" )
+        # c4 = model_1.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
+        c3 = model_1.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'])
+        == ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])), name='c4')
         
 
 
@@ -131,23 +131,23 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
         c3 = model_2.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
 
     elif too_much==False and land_veg_1 != None and land_veg_2 != None:
-        c6 = model_2.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        <= (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))), name='c6')
+        c6 = model_2.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'])
+        <= ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])), name='c6')
         c1 = model_2.addConstr ( veg_1 + veg_2 >= total_demand, name = "c1" )
-        c2 = model_2.addConstr ( veg_1  >= max(veg_1_edss['demand'], original_1),  name = "c2" )    
-        c3 = model_2.addConstr (veg_2 >= max(veg_2_edss['demand'], original_2), name = "c3" )
-        c4 = model_2.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
+        c2 = model_2.addConstr ( veg_1  >= veg_1_edss['demand'],  name = "c2" )    
+        c3 = model_2.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
+        # c4 = model_2.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
 
 
 
     elif too_much==True:
-        c2 = model_2.addConstr ( veg_1  >= original_1,  name = "c2" )    
-        c3 = model_2.addConstr (veg_2 >= original_2, name = "c3" )
-        c4 = model_2.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
-        c6 = model_2.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        == (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))))
+        c2 = model_2.addConstr ( veg_1  >= veg_1_edss['demand'],  name = "c2" )    
+        c3 = model_2.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
+        # c4 = model_2.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
+        c6 = model_2.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'])
+        == ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])))
 
 
     
@@ -193,23 +193,23 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
         c5 = goal_programming_model.addConstr( min_total_input_weight *(( (veg_1_mean_loss_rate_upper_bound* veg_1) + (veg_2_mean_loss_rate_upper_bound* veg_2))-model_2.objVal)/model_2.objVal <= Q, name = "obj_2" )
         
     elif too_much==False and land_veg_1 != None and land_veg_2 != None:
-        c6 = goal_programming_model.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        <= (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))), name='c6') 
+        c6 = goal_programming_model.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'])
+        <=  ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])), name='c6') 
         c1 = goal_programming_model.addConstr ( veg_1 + veg_2 >= total_demand, name = "c1" )
-        c2 = goal_programming_model.addConstr ( veg_1  >= max(veg_1_edss['demand'], original_1),  name = "c2" )    
-        c3 = goal_programming_model.addConstr (veg_2 >= max(veg_2_edss['demand'], original_2), name = "c3" )
+        c2 = goal_programming_model.addConstr ( veg_1  >= veg_1_edss['demand'],  name = "c2" )    
+        c3 = goal_programming_model.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
         c4 = goal_programming_model.addConstr (min_visible_waste_weight *((veg_1_variability* veg_1 + veg_2_variability*veg_2)-model_1.objVal)/model_1.objVal  <= Q , name = "obj_1")
         c5 = goal_programming_model.addConstr( min_total_input_weight *(( (veg_1_mean_loss_rate_upper_bound* veg_1) + (veg_2_mean_loss_rate_upper_bound* veg_2))-model_2.objVal)/model_2.objVal <= Q, name = "obj_2" )
-        c6 = goal_programming_model.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
+        # c6 = goal_programming_model.addConstr((veg_1+veg_2)<=(original_1*1.3+original_2*1.3))
 
     elif too_much==True:
-        c2 = goal_programming_model.addConstr ( veg_1  >= original_1,  name = "c2" )    
-        c3 = goal_programming_model.addConstr (veg_2 >= original_2, name = "c3" )
-        c6 = goal_programming_model.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
-        c8 = goal_programming_model.addConstr(s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
-        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'] 
-        == (land_veg_1*(veg_1_edss['squeezing_perc'])+(land_veg_2*(veg_2_edss['squeezing_perc']))))
+        c2 = goal_programming_model.addConstr ( veg_1  >=  veg_1_edss['demand'],  name = "c2" )    
+        c3 = goal_programming_model.addConstr (veg_2 >= veg_2_edss['demand'], name = "c3" )
+        # c6 = goal_programming_model.addConstr((veg_1+veg_2)==(original_1*1.3+original_2*1.3))
+        c8 = goal_programming_model.addConstr((s3.calc_optimal_input(crop_optimal=veg_2, loss_rates=veg_2_edss['upper_loss_rate']) / veg_2_edss['plants_hact'] + 
+        s3.calc_optimal_input(crop_optimal=veg_1, loss_rates=veg_1_edss['upper_loss_rate']) / veg_1_edss['plants_hact'])
+        == ((land_veg_1*veg_1_edss['squeezing_perc'])+(land_veg_2*veg_2_edss['squeezing_perc'])), name='c8')
         
         # #Previous targets now constraints:
         c4 = goal_programming_model.addConstr (min_visible_waste_weight *((veg_1_variability* veg_1 + veg_2_variability*veg_2)-model_1.objVal)/model_1.objVal  <= Q , name = "obj_1")
@@ -231,74 +231,101 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
     # print ("veg_1 vector", veg_1_results)   
     # print ("veg_2 vector", veg_2_results) 
     # print ("Obj vector",objs)
-
     
+
     # OPTIMIZATION RESULTS:
     optimization_results = {f'{veg_1_edss["name"]}_crop_optimal':math.ceil(veg_1_results [2]), f'{veg_2_edss["name"]}_crop_optimal':math.ceil(veg_2_results [2])}
-    optimization_results[f'{veg_1_edss["name"]}_workers'] = round(optimization_results[f'{veg_1_edss["name"]}_crop_optimal']*total_workers_available/total_demand)
-    optimization_results[f'{veg_2_edss["name"]}_workers'] = total_workers_available - optimization_results[f'{veg_1_edss["name"]}_workers']
-    print('OPTIMIZATION RESULT \n', optimization_results) 
-
-
+  
 #   # To plot based on input rather than output - discretion of the user which point of view is preferable 
     cropmix_veg_1=s3.calc_optimal_input(crop_optimal=optimization_results[f'{veg_1_edss["name"]}_crop_optimal'], loss_rates=veg_1_edss['upper_loss_rate'])
-    cropmix_veg_2=s3.calc_optimal_input(crop_optimal=optimization_results[f'{veg_1_edss["name"]}_crop_optimal'], loss_rates=veg_2_edss['upper_loss_rate'])
-    cropmix_original_1 = s3.calc_optimal_input(crop_optimal=original_1, loss_rates=veg_2_edss['upper_loss_rate'])
+    cropmix_veg_2=s3.calc_optimal_input(crop_optimal=optimization_results[f'{veg_2_edss["name"]}_crop_optimal'], loss_rates=veg_2_edss['upper_loss_rate'])
+    cropmix_original_1 = s3.calc_optimal_input(crop_optimal=original_1, loss_rates=veg_1_edss['upper_loss_rate'])
     cropmix_original_2 =s3.calc_optimal_input(crop_optimal=original_2, loss_rates=veg_2_edss['upper_loss_rate'])
-
+#   #
+    # Update total_workers to keep time constant upon random demands updates
+    if land_veg_1 != None and land_veg_2!=None and too_much==False or too_much ==True:
+        proportion =  ((total_workers_available *(veg_1_results [2]+veg_2_results [2])) / (original_1+original_2))/total_workers_available
+        total_workers_available = math.ceil(proportion * total_workers_available)
+#   #     
+        optimization_results[f'{veg_1_edss["name"]}_workers'] = round(optimization_results[f'{veg_1_edss["name"]}_crop_optimal']*total_workers_available/total_demand)
+        optimization_results[f'{veg_2_edss["name"]}_workers'] = total_workers_available - optimization_results[f'{veg_1_edss["name"]}_workers']
+        print('OPTIMIZATION RESULT \n', optimization_results) 
+        
     #------------------------------ PLOT ---------------------------#
 
-    minMax_result_target_1 = veg_1_variability*veg_1_results [2] + veg_2_variability*veg_2_results [2]
-    minMax_result_target_2 = veg_1_mean_loss_rate_upper_bound*veg_1_results [2] + veg_2_mean_loss_rate_upper_bound*veg_2_results [2]
+    minMax_output_target_1 = veg_1_variability*veg_1_results [2] + veg_2_variability*veg_2_results [2]
+    minMax_output_target_2 = veg_1_mean_loss_rate_upper_bound*veg_1_results [2] + veg_2_mean_loss_rate_upper_bound*veg_2_results [2]
 
-    d = np.linspace(0,30000,5000)
-    x,y = np.meshgrid(d,d)
+    minMax_input_target_1 = veg_1_variability*cropmix_veg_1 + veg_2_variability*cropmix_veg_2
+    minMax_input_target_2 = veg_1_mean_loss_rate_upper_bound*cropmix_veg_1 + veg_2_mean_loss_rate_upper_bound*cropmix_veg_2
+
+    print('\n', 'veg 1 last', cropmix_veg_1, 'veg 2 last', cropmix_veg_2, '\n',
+    'oroginal cropmix 1', cropmix_original_1, 'original cropmix 2', cropmix_original_2, '\n',
+    'max total = ',(cropmix_original_1*1.3)+(cropmix_original_2*1.3), 'sum last cropmix = ', cropmix_veg_2+cropmix_veg_1, '\n')
 
     
     
     if too_much == True:
 
+        d = np.linspace(20000,300000,5000)
+        x,y = np.meshgrid(d,d)
+
+
         plt.figure(figsize=(6,6))
-        max_plantable_1 = original_1*1.3
-        max_plantable_2 = original_2*1.3
+        max_plantable_1 = cropmix_original_1*1.3
+        max_plantable_2 = cropmix_original_2*1.3
         max_total = max_plantable_2+max_plantable_1
+        total_demand = cropmix_veg_2+cropmix_veg_1
 
-        total_demand = optimization_results[f'{veg_1_edss["name"]}_crop_optimal']+optimization_results[f'{veg_2_edss["name"]}_crop_optimal']
-
-        plt.imshow((x>=veg_1_edss['demand']) & (y>=veg_2_edss['demand']) & (x+y>=total_demand) & (x+y<=max_total), 
+        plt.imshow((x>=cropmix_veg_1) & (y>=cropmix_veg_2) & (x+y<=max_total),
                 extent=(x.min()+1,x.max()+1,y.min()+1,y.max()+1),origin="lower", cmap="Greys", alpha = 0.3)  # Feasibile area
 
-        plt.xlim(5000,max_total*1.1)
-        plt.ylim(5000,max_total*1.1)
-        plt.hlines(veg_2_edss['demand'], 0,total_demand, linestyles='--', alpha=0.6)
-        plt.vlines(veg_1_edss['demand'], 0,total_demand, linestyles='--', alpha=0.6)
-        plt.plot([0,total_demand],[total_demand,0], linestyle='--', label='constraints', alpha=0.5, c='blue')
-        plt.plot([0, max_total], [max_total,0], linestyle='-.', label='constraints', alpha=0.5, c='cyan')
-        plt.annotate('Feasable area overlaps constraint', xy=(total_demand/2,total_demand/2))
+        # plt.xlim(45000,max_total*1.1)
+        # plt.ylim(45000,max_total*1.1)
+        plt.hlines(max(cropmix_veg_2, original_2), 0,max_total, linestyles='--', alpha=0.6, )
+        plt.vlines(max(cropmix_veg_1, original_1), 0,max_total, linestyles='--', alpha=0.6)
+        plt.plot([0,total_demand],[total_demand,0], linestyle='--', label='total demand', alpha=0.6, c='blue')
+        plt.plot([0, max_total], [max_total,0], linestyle='--', label='max plantable', alpha=0.6, c='cyan')
+        plt.annotate('Feasable area overlap', xy=(total_demand/2,total_demand/2))
+
+        # minMax plot
+        plt.plot([minMax_input_target_1/veg_1_variability,0],[0,minMax_input_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
+        plt.plot([minMax_input_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_input_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
+        
     
     elif land_veg_1 != None and land_veg_2!=None and too_much==False:
-        plt.figure(figsize=(6,6))
-        max_plantable_1 = original_1*1.3
-        max_plantable_2 = original_2*1.3
-        max_total = max_plantable_2+max_plantable_1
 
-        plt.imshow((x>=veg_1_edss['demand']) & (y>=veg_2_edss['demand']) & (x+y>=total_demand) & (x+y<=max_total) & (x>=original_1) & (y>=original_2),
+        d = np.linspace(20000,300000,5000)
+        x,y = np.meshgrid(d,d)
+
+        plt.figure(figsize=(6,6))
+        max_plantable_1 = cropmix_original_1*1.3
+        max_plantable_2 = cropmix_original_2*1.3
+        max_total = max_plantable_2+max_plantable_1
+        total_demand = cropmix_veg_2+cropmix_veg_1
+
+        plt.imshow((x>=cropmix_veg_1) & (y>=cropmix_veg_2) & (x+y<=max_total),
                 extent=(x.min()+1,x.max()+1,y.min()+1,y.max()+1),origin="lower", cmap="Greys", alpha = 0.3)  # Feasibile area
 
-        plt.xlim(5000,max_total*1.1)
-        plt.ylim(5000,max_total*1.1)
-        plt.hlines(max(veg_2_edss['demand'], original_2), 0,total_demand, linestyles='--', alpha=0.6, )
-        plt.vlines(max(veg_1_edss['demand'], original_1), 0,total_demand, linestyles='--', alpha=0.6)
+        # plt.xlim(40000,max_total*1.1)
+        # plt.ylim(40000,max_total*1.1)
+        plt.hlines(cropmix_veg_2, 0,max_total, linestyles='--', alpha=0.6)
+        plt.vlines(cropmix_veg_1, 0,max_total, linestyles='--', alpha=0.6)
         plt.plot([0,total_demand],[total_demand,0], linestyle='--', label='total demand', alpha=0.6, c='blue')
         plt.plot([0, max_total], [max_total,0], linestyle='--', label='max plantable', alpha=0.6, c='cyan')
         plt.annotate('Feasable area', xy=(total_demand/2,total_demand/2))
 
         # minMax plot
-        plt.plot([minMax_result_target_1/veg_1_variability,0],[0,minMax_result_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
-        plt.plot([minMax_result_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_result_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
+        plt.plot([minMax_input_target_1/veg_1_variability,0],[0,minMax_input_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
+        plt.plot([minMax_input_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_input_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
         
+        # plt.plot([s3.calc_optimal_input(minMax_output_target_1/veg_1_variability, veg_1_edss['upper_loss_rate']), 0],[0,s3.calc_optimal_input(minMax_output_target_1/veg_2_variability, veg_2_edss['upper_loss_rate'])], "green", label='Model-Opt_Input', linewidth=1, alpha=0.6) #Solution of model 1
+        # plt.plot([s3.calc_optimal_input(minMax_output_target_2/veg_1_mean_loss_rate_upper_bound, veg_1_edss['upper_loss_rate']),0], [0, s3.calc_optimal_input(minMax_output_target_2/veg_2_mean_loss_rate_upper_bound, veg_2_edss['upper_loss_rate'])], 'green', lw=1, alpha=0.6)  #Solution of model 2
+
 
     else:
+        d = np.linspace(1000,100000,5000)
+        x,y = np.meshgrid(d,d)
         plt.figure(figsize=(6,6))
         plt.imshow((x>=veg_1_edss['demand']) & (y>=veg_2_edss['demand']) & (x+y>=total_demand), 
                 extent=(x.min()+1,x.max()+1,y.min()+1,y.max()+1),origin="lower", cmap="Greys", alpha = 0.3)  # Feasibile area
@@ -309,8 +336,8 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
         plt.plot([0,total_demand],[total_demand,0], linestyle='--', label='constraints', alpha=0.6)
 
         # minMax plot
-        plt.plot([minMax_result_target_1/veg_1_variability,0],[0,minMax_result_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
-        plt.plot([minMax_result_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_result_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
+        plt.plot([minMax_output_target_1/veg_1_variability,0],[0,minMax_output_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
+        plt.plot([minMax_output_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_output_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
 
         plt.annotate('Feasable area', xy=(total_demand/2,total_demand/2))
 
@@ -319,11 +346,11 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
     # plt.plot([model_2.objVal/veg_1_mean_loss_rate_upper_bound,0], [0,model_2.objVal/veg_2_mean_loss_rate_upper_bound], 'hotpink', label='model_2 min tot input')  #Solution of model 2
 
     # # minMax plot
-    # plt.plot([minMax_result_target_1/veg_1_variability,0],[0,minMax_result_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
-    # plt.plot([minMax_result_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_result_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
+    # plt.plot([minMax_output_target_1/veg_1_variability,0],[0,minMax_output_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
+    # plt.plot([minMax_output_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_output_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
     
-    # plt.plot([s3.calc_optimal_input(minMax_result_target_1/veg_1_variability, veg_1_edss['upper_loss_rate']), 0],[0,s3.calc_optimal_input(minMax_result_target_1/veg_2_variability, veg_2_edss['upper_loss_rate'])], "green", label='Model-Opt_Input', linewidth=1, alpha=0.6) #Solution of model 1
-    # plt.plot([s3.calc_optimal_input(minMax_result_target_2/veg_1_mean_loss_rate_upper_bound, veg_1_edss['upper_loss_rate']),0], [0, s3.calc_optimal_input(minMax_result_target_2/veg_2_mean_loss_rate_upper_bound, veg_2_edss['upper_loss_rate'])], 'green', lw=1, alpha=0.6)  #Solution of model 2
+    # plt.plot([s3.calc_optimal_input(minMax_output_target_1/veg_1_variability, veg_1_edss['upper_loss_rate']), 0],[0,s3.calc_optimal_input(minMax_output_target_1/veg_2_variability, veg_2_edss['upper_loss_rate'])], "green", label='Model-Opt_Input', linewidth=1, alpha=0.6) #Solution of model 1
+    # plt.plot([s3.calc_optimal_input(minMax_output_target_2/veg_1_mean_loss_rate_upper_bound, veg_1_edss['upper_loss_rate']),0], [0, s3.calc_optimal_input(minMax_output_target_2/veg_2_mean_loss_rate_upper_bound, veg_2_edss['upper_loss_rate'])], 'green', lw=1, alpha=0.6)  #Solution of model 2
 
 
     
@@ -335,7 +362,6 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
     n_plot+=1
 
     return optimization_results
-
 # # CALCULATE OPTIMAL INPUT GIVEN THE ABOVE CROP MIX DECISION AND THE UPPER BOUND OF THE PRODUCTION YIELD LOSS RATE already_fullED WORST CASE SCENARIO (WCs)
 # # The farmer is risk adverse and always plan for the WCS
 # # Class "Veggie" stores the Veggies attributes and production data 
@@ -434,9 +460,10 @@ class s3():
         # dictionary created to keep track of REAL production as opposed to what was planned 
         actual_production = {k:0 for k in stages}
         while stage<3:
-            print('\nlettuce demand', self.veg_1.edss['demand'], 'cauli demand', self.veg_2.edss['demand'], 'total', self.tot_demand)
+            # print(f'{veg.name.upper()} starts stage {stage}')
+            # print('\nlettuce demand', self.veg_1.edss['demand'], 'cauli demand', self.veg_2.edss['demand'], 'total', self.tot_demand)
             
-            print(veg.name, 'est yield beginning while', veg.est_yield)
+            # print(veg.name, 'est yield beginning while', veg.est_yield)
             stage+=1
             # print(f'STAGE {stage} of {veg.name} STARTS AT {env.now}')
 
@@ -452,11 +479,11 @@ class s3():
 
                 #  CHECK FOR UPDATES ON LOSS_RATE, e.g. new pests, new weather forecasts
                     if (veg.edss['upper_loss_rate'] != veg.edss['upper_new_loss_rate']) and veg.new_loss_rate() == True:
-                        print(f'+++++++++++ new loss rate detected for {veg.name.upper()}, optimal input updated +++++++++')
+                        # print(f'+++++++++++ new loss rate detected for {veg.name.upper()}, optimal input updated +++++++++')
                         veg.est_yield = self.calc_optimal_input(self.optimization_result[f'{veg.name}_crop_optimal'],veg.edss["upper_loss_rate"])-veg.stages_dic[stages[stage]]
 
             # RANDOMLY UPDATE DEMAND FOR A MAX OF 'UPDATED_DEMAND' TIMES
-                    elif np.random.choice([True, False], p=[0.05,0.95]) and updated_demand<4:
+                    elif np.random.choice([True, False], p=[0.05,0.95]) and updated_demand<4 and self.optimazion_alredy_called==False:
                         updated_demand +=1
 
 #  RANDOLY SELECTING IF RETAILER WANTS MORE OF VEG_1/VEG_2, TOTAL_DEMAND, OR ANY COMBINATIONS OF THESE, RANDOMLY!
@@ -465,16 +492,17 @@ class s3():
                         stochastic_demand = np.random.choice([veg.edss['demand'], self.tot_demand], size=np.random.randint(1,3), replace=False)
                         o_d_v = veg.edss['demand']
                         o_d_tot = self.tot_demand
+                        
                         for i in stochastic_demand:
                             if i == veg.edss['demand']:
                                 # print('original demand ', veg.edss['demand'], 'original Total', self.tot_demand)
-                                increase = np.random.randint(veg.edss['demand']*0.02,veg.edss['demand']*0.25)
+                                increase = np.random.randint(veg.edss['demand']*0.02,veg.edss['demand']*0.15)
                                 veg.edss['demand'] += increase
                                 self.tot_demand+=increase
                                 print(f'New demand from retailer incoming for {veg.name.upper(), veg.edss["demand"]} \n New Total {self.tot_demand}')
                             else:
                                 print('tot demand before update', self.tot_demand)
-                                self.tot_demand+=np.random.randint(self.tot_demand*0.02,self.tot_demand*0.25)
+                                self.tot_demand+=np.random.randint(self.tot_demand*0.02,self.tot_demand*0.15)
                                 print(f'New demand from retailer incoming for TOTAL_DEMAND {self.tot_demand}')
 
 # Check which vegatable is the one going through the function
@@ -483,10 +511,11 @@ class s3():
                             try:
                                 self.optimazion_alredy_called = True
                                 self.optimization_result = optimization(veg.edss, self.veg_2.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2)
-                                print('*'*30,'sono una LATTUGA yuhuuuuu')
+                                # print('*'*30,'sono una LATTUGA yuhuuuuu')
                                 # veg.est_yield = self.calc_optimal_input(self.optimization_result[f'{veg.name}_crop_optimal'], veg.edss['upper_loss_rate'])-veg.stages_dic[stages[stage]]
                                 # print(f'Demand has been updated, stil some room for further squeezing_perc: {self.land_veg_1* - self.total_land_needed(veg)} hectars\n')
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
+                                self.veg_2.edss['demand'] = self.optimization_result[self.veg_2.edss.name+"_crop_optimal"]
                                 self.tot_demand = self.optimization_result[veg.name+"_crop_optimal"] + self.optimization_result[self.veg_2.name+"_crop_optimal"]
                                 self.optimazion_alredy_called = False
                             except Exception:
@@ -498,6 +527,7 @@ class s3():
                                 print('********* too much demand, no feasable solution to satisfy all of it, all veggies are being squeezed ************')
                                 self.optimization_result = optimization(veg.edss, self.veg_2.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2, too_much=True)
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
+                                self.veg_2.edss['demand'] = self.optimization_result[self.veg_2.name+"_crop_optimal"]
                                 self.tot_demand = self.optimization_result[veg.name+"_crop_optimal"] + self.optimization_result[self.veg_2.name+"_crop_optimal"]
                                 self.optimazion_alredy_called = False
 
@@ -507,9 +537,10 @@ class s3():
                                 self.optimazion_alredy_called = True
                                 self.optimization_result = optimization(self.veg_1.edss, veg.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2)
                                 # veg.est_yield = self.calc_optimal_input(self.optimization_result[f'{veg.name}_crop_optimal'], veg.edss['upper_loss_rate'])-veg.stages_dic[stages[stage]]
-                                print('*'*30,'sono una CAVOLO yuhuuuuu')
-                                print(f'Demand has been updated, stil some room for further squeezing_perc: {self.land_veg_2* - self.total_land_needed(veg)} hectars\n')
+                                # print('*'*30,'sono una CAVOLO yuhuuuuu')
+                                # print(f'Demand has been updated, stil some room for further squeezing_perc: {self.land_veg_2* - self.total_land_needed(veg)} hectars\n')
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
+                                self.veg_1.edss['demand'] = self.optimization_result[self.veg_1.name+"_crop_optimal"]
                                 self.tot_demand = self.optimization_result[veg.name+"_crop_optimal"] + self.optimization_result[self.veg_1.name+"_crop_optimal"]
                                 self.optimazion_alredy_called = False
                             except Exception:
@@ -519,7 +550,11 @@ class s3():
                                 self.already_full = True
                                 print('********* too much demand, no feasable solution for optimization, all veggies are being squeezed, all land used **********\n')
                                 self.optimization_result = optimization(self.veg_1.edss, veg.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2, too_much=True)
+                                
+                                # veg['demand'] is now assigned to the result of the last optimization - thus the amount of that vegetable that will be produced
+                                self.veg_1.edss['demand'] = self.optimization_result[self.veg_1.name+"_crop_optimal"]
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
+                                # tot demand is the total that will pbe produced, which is the sum of cropmix for veg_1 + cropmix for veg_2
                                 self.tot_demand = self.optimization_result[veg.name+"_crop_optimal"] + self.optimization_result[self.veg_1.name+"_crop_optimal"]
                                 self.optimazion_alredy_called = False
 
@@ -656,6 +691,7 @@ class s3():
 
 
 # total_workers_available = int(input('how many workers? (only integers please) '))
+
 total_workers_available = 10
 # For now only the name is asked as an input, ideally all these data will be imported from an excel sreadsheet and handled using pandas, but i can only submit one file for the assessment!
 # name_1 = input('Name of the vegetable 1? ')
@@ -666,7 +702,7 @@ edss_lettuce = {'name':name_1.title(), 'upper_loss_rate' : [0.2,0.2,0.3,0.4], 'l
 'demand': np.random.randint(8000, 12000),"activity_step":1000,'stages_interval':[70,50,40,50],'farming_time':[2,2,1,24], 'plants_hact':1500, 'squeezing_perc':1.3}
 
 edss_cauli = {'name':name_2.title(), 'upper_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_loss_rate' : [0.2,0.2,0.3,0.4],'upper_new_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_new_loss_rate' : [0.2,0.2,0.3,0.4],
-'demand': np.random.randint(8000, 12000),"activity_step":1000,'stages_interval':[60,100,70,50],'farming_time':[3,1,1.5,18], 'plants_hact':1350, 'squeezing_perc':1.3}
+'demand': np.random.randint(8000, 12000),"activity_step":1000,'stages_interval':[60,100,70,50],'farming_time':[3,1,1.5,18], 'plants_hact':1500, 'squeezing_perc':1.3}
 
 inital_demans = {'veg_1':edss_lettuce['demand'], 'veg_2':edss_cauli['demand']}
 
