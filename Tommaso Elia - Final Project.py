@@ -249,8 +249,8 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
 #   #     
         optimization_results[f'{veg_1_edss["name"]}_workers'] = round(optimization_results[f'{veg_1_edss["name"]}_crop_optimal']*total_workers_available/total_demand)
         optimization_results[f'{veg_2_edss["name"]}_workers'] = total_workers_available - optimization_results[f'{veg_1_edss["name"]}_workers']
-        print('OPTIMIZATION RESULT \n', optimization_results) 
-        
+        print('OPTIMIZATION RESULT \n', optimization_results,"\n") 
+
     #------------------------------ PLOT ---------------------------#
 
     minMax_output_target_1 = veg_1_variability*veg_1_results [2] + veg_2_variability*veg_2_results [2]
@@ -258,10 +258,11 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
 
     minMax_input_target_1 = veg_1_variability*cropmix_veg_1 + veg_2_variability*cropmix_veg_2
     minMax_input_target_2 = veg_1_mean_loss_rate_upper_bound*cropmix_veg_1 + veg_2_mean_loss_rate_upper_bound*cropmix_veg_2
-
-    print('\n', 'veg 1 last', cropmix_veg_1, 'veg 2 last', cropmix_veg_2, '\n',
-    'oroginal cropmix 1', cropmix_original_1, 'original cropmix 2', cropmix_original_2, '\n',
-    'max total = ',(cropmix_original_1*1.3)+(cropmix_original_2*1.3), 'sum last cropmix = ', cropmix_veg_2+cropmix_veg_1, '\n')
+    
+    # PRINT FOR DEBUGGING :
+    # print('\n', 'veg 1 last', cropmix_veg_1, 'veg 2 last', cropmix_veg_2, '\n',
+    # 'oroginal cropmix 1', cropmix_original_1, 'original cropmix 2', cropmix_original_2, '\n',
+    # 'max total = ',(cropmix_original_1*1.3)+(cropmix_original_2*1.3), 'sum last cropmix = ', cropmix_veg_2+cropmix_veg_1, '\n')
 
     
     
@@ -319,9 +320,6 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
         plt.plot([minMax_input_target_1/veg_1_variability,0],[0,minMax_input_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
         plt.plot([minMax_input_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_input_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
         
-        # plt.plot([s3.calc_optimal_input(minMax_output_target_1/veg_1_variability, veg_1_edss['upper_loss_rate']), 0],[0,s3.calc_optimal_input(minMax_output_target_1/veg_2_variability, veg_2_edss['upper_loss_rate'])], "green", label='Model-Opt_Input', linewidth=1, alpha=0.6) #Solution of model 1
-        # plt.plot([s3.calc_optimal_input(minMax_output_target_2/veg_1_mean_loss_rate_upper_bound, veg_1_edss['upper_loss_rate']),0], [0, s3.calc_optimal_input(minMax_output_target_2/veg_2_mean_loss_rate_upper_bound, veg_2_edss['upper_loss_rate'])], 'green', lw=1, alpha=0.6)  #Solution of model 2
-
 
     else:
         d = np.linspace(1000,100000,5000)
@@ -341,19 +339,6 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
 
         plt.annotate('Feasable area', xy=(total_demand/2,total_demand/2))
 
-    # Corner solutions plot
-    # plt.plot([model_1.objVal/veg_1_variability,0],[0,model_1.objVal/veg_2_variability], 'brown', label='model_1 (min exp waste') #Solution of model 1
-    # plt.plot([model_2.objVal/veg_1_mean_loss_rate_upper_bound,0], [0,model_2.objVal/veg_2_mean_loss_rate_upper_bound], 'hotpink', label='model_2 min tot input')  #Solution of model 2
-
-    # # minMax plot
-    # plt.plot([minMax_output_target_1/veg_1_variability,0],[0,minMax_output_target_1/veg_2_variability], "red", label='Model 1', linewidth=1, alpha=0.6) #Solution of model 1
-    # plt.plot([minMax_output_target_2/veg_1_mean_loss_rate_upper_bound,0], [0,minMax_output_target_2/veg_2_mean_loss_rate_upper_bound], 'red',label='Model 2', lw=1, alpha=0.6)  #Solution of model 2
-    
-    # plt.plot([s3.calc_optimal_input(minMax_output_target_1/veg_1_variability, veg_1_edss['upper_loss_rate']), 0],[0,s3.calc_optimal_input(minMax_output_target_1/veg_2_variability, veg_2_edss['upper_loss_rate'])], "green", label='Model-Opt_Input', linewidth=1, alpha=0.6) #Solution of model 1
-    # plt.plot([s3.calc_optimal_input(minMax_output_target_2/veg_1_mean_loss_rate_upper_bound, veg_1_edss['upper_loss_rate']),0], [0, s3.calc_optimal_input(minMax_output_target_2/veg_2_mean_loss_rate_upper_bound, veg_2_edss['upper_loss_rate'])], 'green', lw=1, alpha=0.6)  #Solution of model 2
-
-
-    
     plt.title(f'Optimization for demand number {n_plot}', fontsize=12)
     plt.legend(fontsize=6.5)
     plt.xlabel('veg_1',size = 10)
@@ -511,7 +496,6 @@ class s3():
                             try:
                                 self.optimazion_alredy_called = True
                                 self.optimization_result = optimization(veg.edss, self.veg_2.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2)
-                                # print('*'*30,'sono una LATTUGA yuhuuuuu')
                                 # veg.est_yield = self.calc_optimal_input(self.optimization_result[f'{veg.name}_crop_optimal'], veg.edss['upper_loss_rate'])-veg.stages_dic[stages[stage]]
                                 # print(f'Demand has been updated, stil some room for further squeezing_perc: {self.land_veg_1* - self.total_land_needed(veg)} hectars\n')
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
@@ -531,13 +515,11 @@ class s3():
                                 self.tot_demand = self.optimization_result[veg.name+"_crop_optimal"] + self.optimization_result[self.veg_2.name+"_crop_optimal"]
                                 self.optimazion_alredy_called = False
 
-                        # elif veg.name == self.veg_2.name and self.already_full==False:
                         else:
                             try:
                                 self.optimazion_alredy_called = True
                                 self.optimization_result = optimization(self.veg_1.edss, veg.edss, self.tot_workers, self.tot_demand, self.land_veg_1, self.land_veg_2, sowed, self.original_demand_1, self.original_demand_2)
                                 # veg.est_yield = self.calc_optimal_input(self.optimization_result[f'{veg.name}_crop_optimal'], veg.edss['upper_loss_rate'])-veg.stages_dic[stages[stage]]
-                                # print('*'*30,'sono una CAVOLO yuhuuuuu')
                                 # print(f'Demand has been updated, stil some room for further squeezing_perc: {self.land_veg_2* - self.total_land_needed(veg)} hectars\n')
                                 veg.edss['demand'] = self.optimization_result[veg.name+"_crop_optimal"]
                                 self.veg_1.edss['demand'] = self.optimization_result[self.veg_1.name+"_crop_optimal"]
@@ -572,7 +554,7 @@ class s3():
                         yield req
                         veg.stages_dic[stages[stage]]+=veg.edss['activity_step']
                         yield env.timeout(farmtime[stage])
-            # print(f'time {round(env.now, 2)} to {stages[stage]} {str(veg.name).upper()}: ACTIVITY FINISHED!\n')
+            print(f'time {round(env.now, 2)},  {stages[stage]} {str(veg.name).upper()}: ACTIVITY FINISHED!\n')
 
             # Percentage increase/decrease farming time
             perc_veg_1 = veg.tot_farm_time(n_workers_initial=3, n_workers_new=10, stage=stage)[1]
@@ -628,24 +610,23 @@ class s3():
             actual_production[stages[stage]] = abs((veg.est_yield * (1-veg.edss['upper_loss_rate'][stage])) - veg.est_yield * (1- real_loss_rate))
 
             if stage>=0 and stage <= 2:
-                # real_loss_rate = np.random.uniform(veg.edss['lower_loss_rate'][stage], veg.edss['upper_loss_rate'][stage])
-                # actual_production[stages[stage]] = abs((veg.est_yield * (1-veg.edss['upper_loss_rate'][stage])) - veg.est_yield * (1- real_loss_rate))
-                # Update EST YIELD
+                 # Update Estimated Yield of the production stage
                 veg.est_yield = veg.est_yield*(1-veg.edss['upper_loss_rate'][stage])
                 # print(f'\n EST YIELD in stage {stage, veg.name} {veg.est_yield} \n')
                 print(veg.name, ':' ,veg.stages_dic, sep=' ')
-            
             elif stage == 3 and env != self.env_fast:
-                # actual_production["actual_harvested_product"] = veg.est_yield - (veg.est_yield * real_loss_rate)
-                # actual_production[f"VISIBILE_OVERPRODUCTION (WASTE) for {veg.name} : "] = abs((veg.est_yield*((1-veg.edss['upper_loss_rate'][stage]))) - (veg.est_yield*(1-real_loss_rate)))
+                actual_production["actual_harvested_product"] = veg.est_yield - (veg.est_yield * real_loss_rate)
+                actual_production[f"VISIBILE_OVERPRODUCTION (WASTE)"] = abs((veg.est_yield*((1-real_loss_rate))) - veg.edss['demand'])
                 print (str(veg.name).upper(),'Estimated Optimal Est Yield', veg.stages_dic)
-                print(str(veg.name).upper(), 'Actual quantities - WASTE', actual_production)
-                print('\n Actual marketable ', veg.name.title(), ' ', {veg.est_yield*(1-veg.edss['upper_loss_rate'][stage])})
-                # optimal = pd.DataFrame.from_dict(veg.stages_dic, orient='index')
-                # waste = pd.DataFrame.from_dict(actual_production, orient='index')
-                # pd.concat([optimal, waste], axis=1).plot.bar(stacked=True, figsize=(8,6), title=f'{veg.name} waste and estimated yield for WCS')
-                # plt.legend(['Optimal Est yield', 'Waste'])
-                # plt.xticks(rotation=0, fontsize=10)
+                print('\n Estimated marketable product ', veg.name.title(), ' ', {veg.est_yield*(1-veg.edss['upper_loss_rate'][stage])})
+                print (actual_production)
+                est_production = pd.DataFrame.from_dict(veg.stages_dic, orient='index')
+                actual_production_dataframe = pd.DataFrame.from_dict(actual_production, orient='index')
+                pd.concat([est_production, actual_production_dataframe], axis=1).plot.bar(stacked=True, figsize=(8,6), title=f'{veg.name} actual production and estimated yield for WCS')
+                plt.legend(['Est production', 'Actual Production'])
+                plt.xticks(rotation=0, fontsize=10)
+
+
 
 
             
@@ -662,14 +643,6 @@ class s3():
             gamma = gamma * (1 - i)  
         optimal_input = crop_optimal / gamma
         return optimal_input
-
-    # @staticmethod
-    # def reverse_opt_input(tot_demand, loss_rates):
-    #     gamma = 1 - loss_rates[0]
-    #     for i in loss_rates[1:] :
-    #         gamma = gamma * (1 - i)  
-    #     return tot_demand*gamma
-
 
     def alternative_scenarios(self, stage, veg):
         print('- - -'*30)
@@ -711,4 +684,5 @@ total_demand = np.random.randint(edss_lettuce['demand'] + edss_cauli['demand'], 
 farm = s3(names=[name_1.title(), name_2.title()], edss=[edss_lettuce, edss_cauli], tot_workers=total_workers_available, tot_demand=total_demand)
 farm.generate()
 plt.show()
+
 
