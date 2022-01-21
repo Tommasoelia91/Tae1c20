@@ -4,9 +4,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from gurobipy import *
 import math
-np.random.seed(42)
 
-
+np.random.seed(42) #for validation
 
 # Make the alternative scenario with New Loss Rate and eventual change in Demand. 
 # I assume that after the optimization and so the optimal crop mix, the producer rents the land and hires workers
@@ -42,11 +41,10 @@ def optimization(veg_1_edss, veg_2_edss, total_workers_available, total_demand, 
     veg_1_variability = veg_1_mean_loss_rate_upper_bound - veg_1_mean_loss_rate_lower_bound
     veg_2_variability = veg_2_mean_loss_rate_upper_bound - veg_2_mean_loss_rate_lower_bound
 
-    print('OPTIMIZATION STARTING NOW, DEMAND VEG 1', veg_1_edss['demand'], 'DEMAND VEG 2', veg_2_edss['demand'], 'TOTAL DEMAND',total_demand)
+    print(f'OPTIMIZATION STARTING NOW, DEMAND {veg_1_edss["name"]} :', veg_1_edss['demand'], 'DEMAND {veg_2_edss["name"]}:', veg_2_edss['demand'], 'TOTAL DEMAND',total_demand)
 
         # ---- CROP MIX AND SCHEDULING OPTIMIZATION -----
 
-    print('tot demand', total_demand)
     #Target 1
     # MINIMIZE TOTAL WASTE (IMPACT PER INPUT BY MINMIZING PRODUCTION OF GOODS WITH A WIDER LOSS RATE RANGE (VARIABILITY))
     model_1 = Model(name = "lp_Expected_Waste_Target")  
@@ -394,7 +392,7 @@ class s3():
 
     # Initiating environments, creating istances of two vegetables, calculating yield andn land needed (more in detail in the next few lines)
     def __init__(self,names, edss, tot_workers, tot_demand):
-        self.env = simpy.rt.RealtimeEnvironment(factor=0.0001, strict=False)
+        self.env = simpy.rt.RealtimeEnvironment(factor=wall_clockwise_model, strict=False)
 
         # creating veggie istances
         self.veg_1 = veggie(name=names[0], edss=edss[0], est_yield=0)
@@ -662,27 +660,27 @@ class s3():
         self.env.run()        
 
 
-
 # total_workers_available = int(input('how many workers? (only integers please) '))
-
 total_workers_available = 10
 # For now only the name is asked as an input, ideally all these data will be imported from an excel sreadsheet and handled using pandas, but i can only submit one file for the assessment!
 # name_1 = input('Name of the vegetable 1? ')
 # name_2 = input('Name of the vegetable 2? ')
 name_1 = 'lettuce'
 name_2 = 'cauliflower'
-edss_lettuce = {'name':name_1.title(), 'upper_loss_rate' : [0.2,0.2,0.3,0.4], 'lower_loss_rate' : [0.1,0.1,0.05,0.1], 'upper_new_loss_rate' : [0.2,0.2,0.3,0.4],'lower_new_loss_rate' : [0.1,0.1,0.05,0.1],
+edss_lettuce = {'name':name_1.title(), 'upper_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_loss_rate' : [0.2,0.2,0.3,0.4],'upper_new_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_new_loss_rate' : [0.2,0.2,0.3,0.4],
 'demand': np.random.randint(8000, 12000),"activity_step":1000,'stages_interval':[70,50,40,50],'farming_time':[2,2,1,24], 'plants_hact':1500, 'squeezing_perc':1.3}
 
-edss_cauli = {'name':name_2.title(), 'upper_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_loss_rate' : [0.2,0.2,0.3,0.4],'upper_new_loss_rate' : [0.3,0.4,0.4,0.55], 'lower_new_loss_rate' : [0.2,0.2,0.3,0.4],
+edss_cauli = {'name':name_2.title(), 'upper_loss_rate' : [0.2,0.2,0.3,0.4], 'lower_loss_rate' : [0.1,0.1,0.05,0.1], 'upper_new_loss_rate' : [0.2,0.2,0.3,0.4],'lower_new_loss_rate' : [0.1,0.1,0.05,0.1],
 'demand': np.random.randint(8000, 12000),"activity_step":1000,'stages_interval':[60,100,70,50],'farming_time':[3,1,1.5,18], 'plants_hact':1500, 'squeezing_perc':1.3}
 
-inital_demans = {'veg_1':edss_lettuce['demand'], 'veg_2':edss_cauli['demand']}
-
 total_demand = np.random.randint(edss_lettuce['demand'] + edss_cauli['demand'], 30000)
+
+# Enter time factor for the main environment here:
+wall_clockwise_model = 0.0001
 
 farm = s3(names=[name_1.title(), name_2.title()], edss=[edss_lettuce, edss_cauli], tot_workers=total_workers_available, tot_demand=total_demand)
 farm.generate()
 plt.show()
+
 
 
